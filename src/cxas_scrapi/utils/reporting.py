@@ -2594,6 +2594,7 @@ def generate_combined_report_from_dir(
     report_format: str = "html",
     vertex_location: str = "global",
     naturalness: bool | dict[str, Any] | None = None,
+    platform_sims: bool = False,
 ) -> str:
     """Load results from directory and generate a combined report.
 
@@ -2626,6 +2627,8 @@ def generate_combined_report_from_dir(
         True enables it with defaults, False disables it, and a dict is
         merged over each test case's own config. None (default) defers to
         the test case.
+      platform_sims: If True, executes platform-compatible simulation test
+        cases as CXAS 2.0 Milestone evaluations on the CES platform.
 
     Returns:
       The resolved output path or URL where the report was saved.
@@ -2680,6 +2683,7 @@ def generate_combined_report_from_dir(
             capture_agent_audio=capture_agent_audio,
             vertex_location=vertex_location,
             naturalness=naturalness,
+            **({"platform_sims": True} if platform_sims else {}),
         )
         sim_results = run_results["simulation"] if "sims" in include else []
         # Map tool results to expected format if needed
@@ -2888,6 +2892,7 @@ def run_all_evals(
     infra_retries: int = 0,
     retry_parallel: int | None = None,
     retry_cooldown: float = 60.0,
+    platform_sims: bool = False,
 ) -> dict[str, Any]:
     """Runs all 4 types of evaluations and returns aggregated results.
 
@@ -2921,6 +2926,8 @@ def run_all_evals(
         True enables it with defaults, False disables it, and a dict is
         merged over each test case's own config. None (default) defers to
         the test case.
+      platform_sims: If True, executes platform-compatible simulation test
+        cases as CXAS 2.0 Milestone evaluations on the CES platform.
 
     Returns:
       A dict containing lists of results for 'simulation', 'golden', 'tool', and
@@ -2933,6 +2940,8 @@ def run_all_evals(
         extra_kwargs["retry_parallel"] = retry_parallel
     if retry_cooldown != 60.0:
         extra_kwargs["retry_cooldown"] = retry_cooldown
+    if platform_sims:
+        extra_kwargs["platform_sims"] = platform_sims
     return evals_runner.run_all_evals(
         app_name=app_name,
         modality=modality,

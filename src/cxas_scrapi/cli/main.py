@@ -26,7 +26,7 @@ import subprocess
 import sys
 import time
 import uuid
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from cxas_scrapi.cli.insights_cli import populate_insights_parser
 from cxas_scrapi.cli.resources_cli import (
@@ -202,6 +202,8 @@ def run_migration_dashboard(args: argparse.Namespace) -> None:
 
 def push_eval(args: argparse.Namespace) -> None:
     """Handles the 'push-eval' command."""
+    import yaml
+
     from cxas_scrapi.core.evaluations import Evaluations
     from cxas_scrapi.utils.eval_utils import EvalUtils
 
@@ -211,6 +213,31 @@ def push_eval(args: argparse.Namespace) -> None:
     eval_utils = EvalUtils(app_name=args.app_name)
 
     try:
+        if os.path.isdir(args.file):
+            print(
+                "Detected directory. Importing Milestone evaluations via REST..."
+            )
+            eval_utils.push_milestone_evals_from_yaml(
+                source=args.file,
+                app_name=args.app_name,
+                conflict_strategy="OVERWRITE",
+            )
+            print("Milestone evaluations pushed successfully.")
+            return
+
+        with open(args.file, encoding="utf-8") as f:
+            raw_data = yaml.safe_load(f)
+
+        if EvalUtils.is_milestone_eval_data(raw_data):
+            print("Detected Milestone Evaluation format. Importing via REST...")
+            res = eval_utils.push_milestone_evals_from_yaml(
+                source=raw_data,
+                app_name=args.app_name,
+                conflict_strategy="OVERWRITE",
+            )
+            print("Milestone evaluations pushed successfully.")
+            return
+
         evals = eval_utils.load_golden_evals_from_yaml(args.file)
         if not evals:
             print(f"No valid evaluations found in '{args.file}'.")
@@ -253,7 +280,7 @@ def wait_for_evaluation_completion(
 
             # Find new runs
             current_result_ids = set(df_current["eval_result_id"].unique())
-            new_ids = current_result_ids - old_result_ids
+            new_ids = current_result_ids - set(old_result_ids)
 
             if new_ids and len(new_ids) >= expected_count:
                 # Wait for ALL new runs to complete
@@ -268,13 +295,67 @@ def wait_for_evaluation_completion(
                         else "COMPLETED"
                     )
 
-                    if exec_state not in ("COMPLETED", "ERROR"):
+                    if exec_state not in ("COMPLETED", "ERROR", "CANCELLED"):
                         all_completed = False
                         break
 
-                    # Fetch trace
-                    raw = eval_utils.eval_client.get_evaluation_result(run_id)
-                    completed_results.append(raw)
+                    # Fetch trace (fall back to REST when gRPC proto omits scenario milestone details)
+                    raw = None
+                    with contextlib.suppress(Exception):
+                        raw = eval_utils.eval_client.get_evaluation_result(
+                            run_id
+                        )
+                    raw_dict = None
+                    if isinstance(raw, dict):
+                        raw_dict = raw
+                    elif raw is not None:
+                        with contextlib.suppress(Exception):
+                            raw_dict = type(raw).to_dict(raw)
+
+                    has_details = isinstance(raw_dict, dict) and (
+                        bool(
+                            (
+                                raw_dict.get("golden_result")
+                                or raw_dict.get("goldenResult")
+                                or {}
+                            ).get("turn_replay_results")
+                            or (
+                                raw_dict.get("golden_result")
+                                or raw_dict.get("goldenResult")
+                                or {}
+                            ).get("turnReplayResults")
+                        )
+                        or bool(
+                            (
+                                raw_dict.get("scenario_result")
+                                or raw_dict.get("scenarioResult")
+                                or {}
+                            ).get("milestone_results")
+                            or (
+                                raw_dict.get("scenario_result")
+                                or raw_dict.get("scenarioResult")
+                                or {}
+                            ).get("milestoneResults")
+                        )
+                    )
+                    if not has_details:
+                        with contextlib.suppress(Exception):
+                            rest_raw = eval_utils.eval_client.get_evaluation_result_rest(
+                                run_id
+                            )
+                            if isinstance(rest_raw, dict) and any(
+                                k in rest_raw
+                                for k in (
+                                    "scenarioResult",
+                                    "scenario_result",
+                                    "goldenResult",
+                                    "golden_result",
+                                )
+                            ):
+                                raw = rest_raw
+
+                    if raw is not None:
+                        completed_results.append(raw)
 
                 if all_completed:
                     print(f"All {len(new_ids)} evaluations completed.")
@@ -398,20 +479,14 @@ def run_eval(args: argparse.Namespace) -> None:
     eval_client = Evaluations(app_name=args.app_name)
     eval_utils = EvalUtils(app_name=args.app_name)
 
+    eval_type = getattr(args, "eval_type", None)
+    run_count = getattr(args, "run_count", None)
+
     # Determine which evaluations to run
     evaluations_to_run = []
     if args.evaluation_id:
         evaluations_to_run.append(args.evaluation_id)
-    else:
-        # Require prefix or tags if no specific ID is given
-        if not args.display_name_prefix and not args.tags:
-            print(
-                "Error: You must provide either --evaluation-id, "
-                "--display-name-prefix, or --tags to "
-                "specify which tests to run."
-            )
-            sys.exit(1)
-
+    elif args.display_name_prefix or args.tags:
         if args.display_name_prefix:
             print(
                 "Fetching tests matching prefix: "
@@ -448,57 +523,13 @@ def run_eval(args: argparse.Namespace) -> None:
             sys.exit(0)
 
         print(f"Found {len(evaluations_to_run)} matching test(s) to run.")
-
-    # Determine which evaluations to run
-    evaluations_to_run = []
-    if args.evaluation_id:
-        evaluations_to_run.append(args.evaluation_id)
-    else:
-        # Require prefix or tags if no specific ID is given
-        if not args.display_name_prefix and not args.tags:
-            print(
-                "Error: You must provide either --evaluation-id, "
-                "--display-name-prefix, or --tags to "
-                "specify which tests to run."
-            )
-            sys.exit(1)
-
-        if args.display_name_prefix:
-            print(
-                "Fetching tests matching prefix: "
-                f"'{args.display_name_prefix}'..."
-            )
-        elif args.tags:
-            print(f"Fetching tests matching tags: {args.tags}...")
-        all_evals = eval_client.list_evaluations(app_name=args.app_name)
-
-        for eval_obj in all_evals:
-            match = False
-
-            if args.display_name_prefix and eval_obj.display_name.startswith(
-                args.display_name_prefix
-            ):
-                match = True
-
-            # Assuming tags are accessible as a
-            # list/repeated field on the Evaluation
-            # object
-            if args.tags and hasattr(eval_obj, "tags"):  # noqa: SIM102
-                # intersection of CLI tags and agent tags
-                if any(t in eval_obj.tags for t in args.tags):
-                    match = True
-
-            if match:
-                evaluations_to_run.append(eval_obj.name)
-
-        if not evaluations_to_run:
-            print(
-                "No matching tests found for the "
-                "given prefix or tags. Aborting run."
-            )
-            sys.exit(0)
-
-        print(f"Found {len(evaluations_to_run)} matching test(s) to run.")
+    elif not eval_type:
+        print(
+            "Error: You must provide either --evaluation-id, "
+            "--display-name-prefix, --tags, or --eval-type to "
+            "specify which tests to run."
+        )
+        sys.exit(1)
 
     try:
         # Step 1: Capture existing evaluation runs to diff against later
@@ -510,21 +541,54 @@ def run_eval(args: argparse.Namespace) -> None:
             old_result_ids = set(df_initial["eval_result_id"].unique())
 
         # Step 2: Trigger evaluation
-        eval_client.run_evaluation(
-            evaluations=evaluations_to_run,
-            app_name=args.app_name,
-            modality=args.modality,
-            golden_run_method=args.golden_run_method,
-        )
+        run_eval_kwargs: dict[str, Any] = {
+            "evaluations": evaluations_to_run if evaluations_to_run else None,
+            "app_name": args.app_name,
+            "modality": args.modality,
+            "golden_run_method": args.golden_run_method,
+        }
+        if eval_type is not None:
+            run_eval_kwargs["eval_type"] = eval_type
+        if run_count is not None:
+            run_eval_kwargs["run_count"] = run_count
+        eval_client.run_evaluation(**run_eval_kwargs)
         print("Evaluation triggered successfully based on CLI call.")
 
         # Step 3: Wait and backoff on pending evaluations.
         if args.wait:
+            base_expected = len(evaluations_to_run)
+            if (
+                base_expected == 0
+                and eval_type
+                and isinstance(getattr(eval_client, "evals_map", None), dict)
+            ):
+                et_norm = str(eval_type).lower()
+                if et_norm in (
+                    "scenarios",
+                    "scenario",
+                    "milestone",
+                    "milestones",
+                ):
+                    base_expected = len(
+                        eval_client.evals_map.get("scenarios", {})
+                    )
+                elif et_norm in ("goldens", "golden"):
+                    base_expected = len(
+                        eval_client.evals_map.get("goldens", {})
+                    )
+                else:
+                    base_expected = len(
+                        eval_client.evals_map.get("goldens", {})
+                    ) + len(eval_client.evals_map.get("scenarios", {}))
+            runs_multiplier = (
+                run_count if isinstance(run_count, int) and run_count > 1 else 1
+            )
+            expected_count = max(1, base_expected * runs_multiplier)
             df_new_run = wait_for_evaluation_completion(
                 eval_utils,
                 old_result_ids,
                 args.app_name,
-                expected_count=len(evaluations_to_run),
+                expected_count=expected_count,
             )
             pass_status = filter_metrics_and_assess(
                 df_new_run, args.filter_auto_metrics
@@ -673,6 +737,11 @@ def combined_evals_report_cmd(args: argparse.Namespace) -> None:
         report_format=getattr(args, "format", "html") or "html",
         vertex_location=getattr(args, "vertex_location", "global") or "global",
         naturalness=getattr(args, "naturalness", None),
+        **(
+            {"platform_sims": True}
+            if getattr(args, "platform_sims", False)
+            else {}
+        ),
     )
     print(f"Combined report generated at {actual_output_path}")
 
@@ -1919,6 +1988,15 @@ def get_parser() -> argparse.ArgumentParser:
         default="global",
         help="Vertex AI location for evaluation LLM models. Defaults to 'global'.",
     )
+    parser_report.add_argument(
+        "--platform-sims",
+        action="store_true",
+        default=False,
+        help=(
+            "Run platform-compatible simulations as Milestone evaluations on "
+            "the CES platform."
+        ),
+    )
     parser_report.set_defaults(func=combined_evals_report_cmd)
 
     parser_test_tools = subparsers.add_parser(
@@ -2054,7 +2132,11 @@ def get_parser() -> argparse.ArgumentParser:
 
     # Parser for 'push'
     parser_push_eval = subparsers.add_parser(
-        "push-eval", help="Push evaluation(s) from a YAML file to the app."
+        "push-eval",
+        help=(
+            "Push Golden or Milestone/Simulation evaluation(s) from a YAML "
+            "file or directory to the app."
+        ),
     )
     parser_push_eval.add_argument(
         "--app-name",
@@ -2064,7 +2146,10 @@ def get_parser() -> argparse.ArgumentParser:
     parser_push_eval.add_argument(
         "--file",
         required=True,
-        help="Path to the YAML file containing evaluation definitions.",
+        help=(
+            "Path to the YAML file or directory containing Golden "
+            "(conversations:) or Milestone/Simulation (evals:) definitions."
+        ),
     )
     parser_push_eval.set_defaults(func=push_eval)
 
@@ -2129,6 +2214,20 @@ def get_parser() -> argparse.ArgumentParser:
             "Method used to replay golden tests (STABLE or NAIVE). "
             "Defaults to STABLE."
         ),
+    )
+    parser_run.add_argument(
+        "--eval-type",
+        choices=["goldens", "scenarios", "all"],
+        default=None,
+        help=(
+            "Run a specific type of evaluation ('goldens', 'scenarios', 'all')."
+        ),
+    )
+    parser_run.add_argument(
+        "--run-count",
+        type=int,
+        default=None,
+        help="Number of times to run the evaluation.",
     )
 
     parser_run.set_defaults(func=run_eval)

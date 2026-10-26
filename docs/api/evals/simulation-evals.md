@@ -68,6 +68,16 @@ print(report)  # Colorized in terminal, styled HTML in Jupyter
 
 In `audio` modality the agent's recordings are attached to the grading call automatically, so pacing and emotion are judged from what the caller heard. `perceivedLatency` is measured from the conversation trace rather than judged, and a turn past `latency_failure_threshold_ms` fails the simulation outright.
 
+## Platform Milestone Evaluations (CXAS 2.0)
+
+`SimulationEvals` also supports converting simulation test cases into CXAS 2.0 `scenario.milestones` evaluations and executing them directly on the CX Agent Studio platform:
+
+- **`to_milestone_yaml(test_cases)`** — sanitizes and converts one or more simulation test cases into CXAS 2.0 Milestone YAML (`evals:` format compatible with CES `MilestoneYamlTranslator`).
+- **`push_to_platform(test_cases, conflict_strategy="OVERWRITE")`** — converts and imports simulation test cases onto the platform as Milestone evaluations via `:importEvaluations`.
+- **`run_simulations_on_platform(test_cases, runs=1, timeout_seconds=600)`** — imports, triggers `RunEvaluation`, waits for completion, and returns results formatted as standard simulation result dictionaries.
+- **`requires_local_execution(test_case)`** — checks whether a test case uses local-only features (`modality: "audio"`, `audio_expectations`, `naturalness_metric`, `use_tool_fakes`, or `barge_in_after_ms`).
+- **`run_simulations(..., run_on_platform=True, platform_timeout=600)`** — automatically partitions `test_cases` into platform-compatible cases (executed via `run_simulations_on_platform`) and local-only cases (executed locally via `simulate_conversation`).
+
 ## Reference
 
 ::: cxas_scrapi.evals.simulation_evals.SimulationEvals

@@ -80,6 +80,7 @@ def run_all_evals(
     infra_retries: int = 0,
     retry_parallel: int | None = None,
     retry_cooldown: float = 60.0,
+    platform_sims: bool = False,
 ) -> typing.Any:
     """Runs all evaluations and returns aggregated results.
 
@@ -286,6 +287,8 @@ def run_all_evals(
                         sim_kwargs["retry_parallel"] = retry_parallel
                     if retry_cooldown != 60.0:
                         sim_kwargs["retry_cooldown"] = retry_cooldown
+                    if platform_sims:
+                        sim_kwargs["run_on_platform"] = platform_sims
                     sim_results = sim_evals.run_simulations(
                         test_cases,
                         runs=runs,
