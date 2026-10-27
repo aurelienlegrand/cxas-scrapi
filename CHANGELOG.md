@@ -1,6 +1,54 @@
 # Changelog
 
 
+## [1.11.0](https://github.com/GoogleCloudPlatform/cxas-scrapi/compare/v1.10.0...v1.11.0) (2026-10-27)
+
+
+### Features
+
+* **cli:** add --app-dir-name option to cxas pull ([7b70af6](https://github.com/GoogleCloudPlatform/cxas-scrapi/commit/7b70af60597f3a66cc689ef2518b466438938433))
+* **cli:** add --app-dir-name option to cxas pull ([8a0dafa](https://github.com/GoogleCloudPlatform/cxas-scrapi/commit/8a0dafa7f1d4dfb99801b8948d314c52c9bd1bb9))
+* **deployments:** support persona property and noise suppression lev… ([c25373a](https://github.com/GoogleCloudPlatform/cxas-scrapi/commit/c25373a2810d3d6760ee79df98bd4d0fed0ddf19))
+* **evals:** add barge-in evaluation support to SimulationEvals and TurnEvals ([6568114](https://github.com/GoogleCloudPlatform/cxas-scrapi/commit/6568114d93c6ed4b3ecdcff58e3c82f952015de9))
+* **evals:** add barge-in evaluation support to SimulationEvals and TurnEvals ([14a4129](https://github.com/GoogleCloudPlatform/cxas-scrapi/commit/14a4129ca43555c490173cab28236ed1fd36864d))
+* **evals:** update default eval TTS, judge, and sim user models ([818bfbd](https://github.com/GoogleCloudPlatform/cxas-scrapi/commit/818bfbdb48772cc7c8dfbf211a979b2cc91dcd96))
+* **evals:** update default eval TTS, judge, and sim user models ([8ac93a2](https://github.com/GoogleCloudPlatform/cxas-scrapi/commit/8ac93a2afc857748e2e9c100d58d9b8f04a0b233))
+* **reporting:** integrate signal-level acoustic metrics, voice drift, and barge-in evaluation into audio analysis report ([615e5a6](https://github.com/GoogleCloudPlatform/cxas-scrapi/commit/615e5a6421e4e5fd14b5f3e408b0ddd27d122003))
+* **reporting:** integrate signal-level acoustic metrics, voice drift, and barge-in evaluation into audio analysis report ([8ee9841](https://github.com/GoogleCloudPlatform/cxas-scrapi/commit/8ee98416ac865121d88bc75fb060aa087a06c79f))
+* **reporting:** redesign evaluation HTML report with tabbed navigation and latency dashboard ([31bdd1d](https://github.com/GoogleCloudPlatform/cxas-scrapi/commit/31bdd1de7380373654b88fc529b59977bdb24fcd))
+* **reporting:** redesign evaluation HTML report with tabbed navigation and latency dashboard ([adde6df](https://github.com/GoogleCloudPlatform/cxas-scrapi/commit/adde6df0a8f8dcff532977ea739c7e55cfad2dea))
+* **trace:** numeric voice-consistency metrics (trace audio measure) ([872b5a8](https://github.com/GoogleCloudPlatform/cxas-scrapi/commit/872b5a8c8ba3f24be57087398b6d71bfad30a04a))
+* **trace:** numeric voice-consistency metrics (trace audio measure) ([0e12178](https://github.com/GoogleCloudPlatform/cxas-scrapi/commit/0e121780205206e5056b7f8a2ca5f35eb99306d4))
+* **trace:** voice-drift flags per turn (trace audio drift) ([6cf6f58](https://github.com/GoogleCloudPlatform/cxas-scrapi/commit/6cf6f5857fb504c720856a2fbdba779883d618ee))
+* **trace:** within-turn voice seams (MIDTURN / MIDDRIFT) ([433452b](https://github.com/GoogleCloudPlatform/cxas-scrapi/commit/433452bb35b04d8dc501ae65c1d42b55b8e7cf9b))
+
+
+### Bug Fixes
+
+* **core:** wait for turnCompleted when skip_playback_wait=True and default TTS voice_name from language_code ([acdc7b2](https://github.com/GoogleCloudPlatform/cxas-scrapi/commit/acdc7b29fc7643132345f82615b547e99d483bd6))
+* **docs:** align CLI examples with current commands ([2aecd9c](https://github.com/GoogleCloudPlatform/cxas-scrapi/commit/2aecd9cd239506aef4b703647440ac162728a427))
+* **docs:** correct CLI reference commands ([2540acd](https://github.com/GoogleCloudPlatform/cxas-scrapi/commit/2540acd571059aba0c4956ae118b05c7f35dac5f))
+* **docs:** correct evaluation and quality guide commands ([797edaf](https://github.com/GoogleCloudPlatform/cxas-scrapi/commit/797edaf27d9980f7137b50d475942548cabf9535))
+* **docs:** correct quickstart and app development examples ([f945258](https://github.com/GoogleCloudPlatform/cxas-scrapi/commit/f945258b4bc3319838adc3c6203901196e96c39c))
+* **evals:** handle raw int run state in wait_for_run_and_get_results ([83213c1](https://github.com/GoogleCloudPlatform/cxas-scrapi/commit/83213c1b64fe7340fc2247480d6f9fd3ed7f3bd4))
+* **evals:** keep expectation display name when sideloading export ([cef5b02](https://github.com/GoogleCloudPlatform/cxas-scrapi/commit/cef5b028b650322679e65ee6bb35b9c5c9f95033))
+* **evals:** treat unrecognized run states as finished ([0adae65](https://github.com/GoogleCloudPlatform/cxas-scrapi/commit/0adae656a19b3f61f775f7c117bdfc18dd3e7413))
+* **evals:** treat unrecognized run states as finished ([84498f8](https://github.com/GoogleCloudPlatform/cxas-scrapi/commit/84498f84d38d25c46e7ff79bd64f5853c345c7a4))
+* **gemini:** retry transient errors in GeminiGenerate using tenacity ([7de9ab7](https://github.com/GoogleCloudPlatform/cxas-scrapi/commit/7de9ab73ada48734a7063d00a9ed7c3a981e0e90))
+* **gemini:** retry transient errors in GeminiGenerate using tenacity ([9b20b49](https://github.com/GoogleCloudPlatform/cxas-scrapi/commit/9b20b49b231570e8be7a02836f3e73a9adb4bd84))
+* **lint:** remove high-noise, duplicate, and false-positive error rules ([9691a84](https://github.com/GoogleCloudPlatform/cxas-scrapi/commit/9691a848091120e3a8dcc2a6a83e10abb1a4bbfb))
+* **lint:** remove high-noise, duplicate, and false-positive error rules ([956d710](https://github.com/GoogleCloudPlatform/cxas-scrapi/commit/956d71024fcf2c3e98b1ec604d39d87547262e8e))
+* **sims:** guard step completion reconciliation against harness_error ([a8367ed](https://github.com/GoogleCloudPlatform/cxas-scrapi/commit/a8367ed2952c183123486d3753be3e9c2359a434))
+* **sims:** reconcile goals marked ready for completion on session end ([18dbfd9](https://github.com/GoogleCloudPlatform/cxas-scrapi/commit/18dbfd99d3318b0e34504a2a635d0d7c8df664d4))
+* **sims:** reconcile goals marked ready for completion on session end ([066f208](https://github.com/GoogleCloudPlatform/cxas-scrapi/commit/066f208d24df282eeb282c580edff4bd8bf33825))
+* **skills:** make foundry push hooks block in Claude Code ([cda48c8](https://github.com/GoogleCloudPlatform/cxas-scrapi/commit/cda48c81988f9b43626e0a75675ab79418885299))
+
+
+### Documentation
+
+* **agent-foundry:** add eval execution strategy — smoke test first, iterate targeted ([6cc7aa3](https://github.com/GoogleCloudPlatform/cxas-scrapi/commit/6cc7aa38f6e8947b5c360f0e15015475aa632586))
+* fix positional app ID in CLI quickstart ([80e909a](https://github.com/GoogleCloudPlatform/cxas-scrapi/commit/80e909a2de9b6270e5f2cec6ccb366b4d00dc2ea))
+
 ## [1.10.0](https://github.com/GoogleCloudPlatform/cxas-scrapi/compare/v1.9.1...v1.10.0) (2026-10-17)
 
 
